@@ -1,0 +1,136 @@
+---
+title: "Regression Models: an analysis on the transmission type, and mileage per gallon, on the mtcars dataset"
+author: "Stefano Merlo"
+date: "04/11/2015"
+output: html_document
+---
+
+TODO:
+- carica su github
+- metti link a repo github in appendice
+- rileggi il tutto
+
+## Overview
+
+This paper is to explain relationship between the transmission type of a car (manual vs automatic) and the mileage per gallon.
+
+Findings are that the manual transmission is better for the mileage per gallon outcome, and the difference between the two transmission is 7.2 miles per gallon.
+
+## Exploratory data analysis
+
+```{r}
+# load libraries and data
+library(ggplot2)
+library(scales)
+data(mtcars)
+```
+
+In the sample analyzed, ```r percent(sum(mtcars$am==0)/length(mtcars$am))``` of the cars have automatic transmission, while ```r percent(sum(mtcars$am==1)/length(mtcars$am))``` have manual transmission.
+
+In average, cars with manual transmission perform ```r round(mean(mtcars[mtcars$am==1,"mpg"]), 2)``` miles per gallon, while automatic transmission ones perform ```r round(mean(mtcars[mtcars$am==0,"mpg"]), 2)``` miles per gallon.
+
+## Regression analysis
+
+#### Simple linear regression model
+
+We'll use the simple linear regression method.
+
+```{r}
+fit <- lm(mpg ~ am, data=mtcars)
+summary(fit)
+```
+
+We can notice that the estimated slope of the regression line is positive (```r coef(fit)[[2]]```): since the transmission type is a factor predictor, and the 1 value is associated with the manual transmission, we conclude that having a positive coefficient results in an **increment of the estimated mpg when we're considering manual transmission** (intercept + slope X 1); on the other case, when considering the automatic transmission, the slope is multiplied by 0, so the final result is smaller (intercept + slope X 0).
+
+We also estimated that automatic transmission is performing ```round(r coef(fit)[[1]], 3)``` miles per gallon, while the manual transmission has ```r round(coef(fit)[[2]], 3)`` miles per gallon more.
+
+From the low p-values we reject the null hypothesis that there is no relationship between the two variables.
+
+###### Validation
+
+Let's check if the estimated are within the 95% confidence interval for the actual values.
+
+```{r}
+confint(fit)
+```
+
+From the calculation, there's 95% of possibility that actual values are included in the interval of our model.
+
+To have a further look at the accuracy, let's plot the residuals (see Appendix).
+
+We can notice that residuals are distributed along the 0 horizontal line. The absence of any pattern give us confidence that the simple linear regression model fits well the predictor / response analysis. But the absolute distance from the X-axis is high, so there may be rooms for improvement.
+
+Now let's quantify the variance explained from the model with the R squared.
+
+```{r}
+paste("R squared: ", round(summary(fit)$r.squared, 3))
+```
+
+only ```r percent(round(summary(fit)$r.squared,3))``` of the variance is explained. Let's explore a different method, the multivariate regression analysis.
+
+#### Multivariate regression model
+
+Looking at only a predictor can be reductive; we can fit a different model by including more variables in it using the formula notation of the lm function.
+
+In Appendix there's the correlation heatmap: we can use to evaluate which predictors are not highly cross-correlated (yellow) and include in the model those that are more independent (red).
+
+First fit is done by including predictors without reciprocal interactions:
+
+```{r}
+fit2 <- lm(formula = mpg ~ am + wt + hp + disp + carb, data = mtcars)
+paste("R squared: ", summary(fit2)$r.squared)
+```
+
+This R squared tells us that ```r percent(round(summary(fit2)$r.squared,3))``` of the variance is explained in our model.
+
+But let's try to include also relationships between predictors by slightly change the formula notation (replace + with * between predictors).
+
+```{r}
+fit3 <- lm(formula = mpg ~ am * wt * hp * disp * carb, data = mtcars)
+paste("R squared: ", summary(fit3)$r.squared)
+paste("Is am slope coefficient positive? ", coef(fit3)[[2]] > 0)
+```
+
+Wow. ```r percent(round(summary(fit3)$r.squared,3))``` of the variance is explained in the new model.
+
+We can consider this new model far more accurate than the simple linear one to predict the outcome from these predictors (see Appendix for the new residuals plot), but it's also more complicated and beyond the scope of this analysis.
+
+What really matter is that the coefficient for the predictor AM is still positive: this validates the first result, that the manual transmission increases the mpg.
+
+## Conclusion
+
+A simple linear regression model shows that the manual transmission os better for the mileage per gallon, and the increase is quantified in ```r round(coef(fit)[[2]], 3)``` mpg. But we also noticed that this model is poor performing, since, even if valid from the confidence interval and p-value analysis, the R squared shows that the model explains only the ```r percent(round(summary(fit)$r.squared,3))``` of the variance.
+
+Adding new predictors, and their relationships among each other, increase drammatically the accuracy to a ```r percent(round(summary(fit3)$r.squared,3))``` of the variance explained, but even if this new model will probably be good for a prediction analysis (predict a response by given new observations) it's not adding value to the scope of this analysis to answer the two simple questions at the beginning.
+
+## Appendix
+
+#### Share of manual and automatic transmission in the dataset
+
+Automatic transmission is labeled with a 0, while manual is 1.
+
+```{r}
+qplot(as.factor(mtcars$am), xlab="Transmission type")
+```
+
+#### Simple linear regression: residuals plot
+
+```{r}
+plot(residuals(fit))
+```
+
+#### Correlation heatmap
+
+```{r echo=FALSE}
+heatmap(abs(cor(mtcars)), Colv=NA, Rowv=NA, col=heat.colors(256))
+```
+
+#### Residuals plot for the enhanced model (multivariate regression)
+
+```{r echo=FALSE}
+plot(residuals(fit3))
+```
+
+#### Complete Knitr markdown document
+
+github
